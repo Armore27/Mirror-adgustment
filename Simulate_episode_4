@@ -1,0 +1,75 @@
+function [r_sum, koef_all, states_all, action_all] = simulate_episode(method)
+global n_actions epsilon gamma alpha done reward num_states koef_t s action s_prime q pi num_steps_all;
+reseting;
+initials;
+r_sum = [];
+states_all = [];
+action_all = [];
+koef_all = [];
+n_steps = 0;
+num_states = 0;
+action = 0;
+reward = 0;
+s_prime = 0;
+t_prev = 0;
+reward_t = [];
+
+while done == 1
+    %reward = 0;
+    n_steps = n_steps+1;
+    x = rand;
+    
+    % take action from policy
+    choose_step;
+    
+    % take step
+    step;
+    
+    if method == 1
+        A = find(q(s_prime, :) == max(q(s_prime, :)));
+        a = randi(length(A));
+        a_prime = A(a);
+        q(s, action) = q(s, action) + alpha * (reward + gamma * q(s_prime, a_prime) - q(s, action));
+        reward_t = [reward_t; reward gamma * q(s_prime, a_prime)];
+    end
+    
+    t = toc;
+    dt = t - t_prev;
+    t_prev = t;
+    if method == 2
+        [n, a_prime] = max(cumsum(pi(s_prime, :)) > x);
+        q(s, action) = q(s, action) + alpha * (reward + gamma * q(s_prime, a_prime) - q(s, action));
+    end
+    
+    if method == 3
+        q(s, action) = q(s, action) + alpha * (reward + gamma * dot(pi(s_prime, :), q(s_prime, :)) - q(s, action));
+    end
+
+    % update policy
+    B = find(q(s, :) == max(q(s, :)));
+    b = randi(length(B));
+    best_a = B(b);
+    for i = 1:n_actions
+        if i == best_a
+            pi(s, i) = 1 - (n_actions - 1) * (epsilon / n_actions);
+        else
+            pi(s, i) = epsilon / n_actions;
+        end
+    end
+    
+    %decay gamma close to the end of the episode
+    if n_steps > 1000
+        gamma = gamma * 0.99995;
+    end
+    
+    % get information
+    states_all = [states_all; s_prime];
+    s = s_prime;
+    r_sum = [r_sum; reward];
+    koef_all = [koef_all; koef_t];
+    action_all = [action_all; action]; 
+    
+    if num_states >= num_steps_all
+        done = 2;
+    end
+end  
