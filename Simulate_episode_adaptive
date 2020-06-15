@@ -1,6 +1,10 @@
 function [r_sum, koef_all, states_all, action_all] = simulate_episode(method)
-global n_actions epsilon gamma alpha done reward num_states koef_t s action s_prime q pi num_steps_all;
+
+global epsilon alpha num_steps_all num_koef q pi gamma n_states n_actions ...
+    n_actuators env restricted_actuators coord_dvig action state_dvig ...
+    state_env s s_prime koef_all_m koef_t reward;
 reseting;
+savings;
 initials;
 r_sum = [];
 states_all = [];
@@ -10,32 +14,25 @@ n_steps = 0;
 num_states = 0;
 action = 0;
 reward = 0;
-s_prime = 0;
-t_prev = 0;
-reward_t = [];
+s_prime = 1;
 
-while done == 1
-    %reward = 0;
+for i = 1:num_steps_all
     n_steps = n_steps+1;
-    x = rand;
     
     % take action from policy
-    choose_step;
+    choose_actions;
     
     % take step
     step;
     
+    % use one of the methods
     if method == 1
         A = find(q(s_prime, :) == max(q(s_prime, :)));
         a = randi(length(A));
         a_prime = A(a);
         q(s, action) = q(s, action) + alpha * (reward + gamma * q(s_prime, a_prime) - q(s, action));
-        reward_t = [reward_t; reward gamma * q(s_prime, a_prime)];
     end
     
-    t = toc;
-    dt = t - t_prev;
-    t_prev = t;
     if method == 2
         [n, a_prime] = max(cumsum(pi(s_prime, :)) > x);
         q(s, action) = q(s, action) + alpha * (reward + gamma * q(s_prime, a_prime) - q(s, action));
@@ -58,18 +55,14 @@ while done == 1
     end
     
     %decay gamma close to the end of the episode
-    if n_steps > 1000
+    if n_steps > 90000
         gamma = gamma * 0.99995;
     end
     
     % get information
     states_all = [states_all; s_prime];
-    s = s_prime;
     r_sum = [r_sum; reward];
     koef_all = [koef_all; koef_t];
     action_all = [action_all; action]; 
     
-    if num_states >= num_steps_all
-        done = 2;
-    end
 end  
